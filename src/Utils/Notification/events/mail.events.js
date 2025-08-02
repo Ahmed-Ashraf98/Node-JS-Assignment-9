@@ -4,12 +4,22 @@ import { OTP_Template } from "../templates/otp.temp.js";
 
 export const emailEmitter = new EventEmitter();
 
-emailEmitter.on("confirmEmail", async ({ email, userName, otp }) => {
-  const template = OTP_Template(
-    otp,
-    10,
-    userName,
-    "Please use the OTP below to verify your email"
-  );
-  await sendMail("Email Verification", template, [email]);
-});
+export const emailEvents = {
+  confirmEmail: "confirmEmail",
+};
+
+Object.freeze(emailEvents);
+
+emailEmitter.on(
+  "confirmEmail",
+  async ({ email, userName, otp, otpDuration = 10 }) => {
+    const template = OTP_Template(
+      otp,
+      otpDuration,
+      userName,
+      "Please use the OTP below to verify your email"
+    );
+    let result = await sendMail("Email Verification", template, [email]);
+    console.log(result);
+  }
+);

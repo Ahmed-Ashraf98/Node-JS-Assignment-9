@@ -2,6 +2,10 @@ import { UserModal } from "../../DB/Models/user.model.js";
 import * as userUtils from "../../Utils/User/user.utils.js";
 import { responseHandler } from "../../Utils/Common/responseHandler.js";
 import httpStatus from "../../Utils/Common/httpStatus.js";
+import {
+  emailEmitter,
+  emailEvents,
+} from "../../Utils/Notification/events/mail.events.js";
 
 export const signUp = async (req, res, next) => {
   const { name, email, password, age, phone } = req.body;
@@ -63,6 +67,12 @@ export const login = async (req, res, next) => {
     );
   }
 
+  emailEmitter.emit(emailEvents.confirmEmail, {
+    email,
+    name: "Ahmed",
+    otp: "34234",
+    otpDuration: 10,
+  });
   // 3- generate access token and refresh token
   const accessToken = userUtils.generateToken({ id: userRecord._id });
   const refreshToken = userUtils.generateRefreshToken({ id: userRecord._id });
