@@ -2,7 +2,7 @@
  * @param {string} code : The OTP Code
  * @param {number} codeDuration : OTP Duration
  * @param {string} name : The < To Name > user
- * @param {string} message : The message
+ * @param {string} message : The email body message
  * @returns email template
  */
 export const OTP_Template = (
