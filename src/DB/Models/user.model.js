@@ -1,5 +1,5 @@
 import mongoose, { get } from "mongoose";
-import { decryptPhone } from "../../Utils/User/user.utils";
+import { decryptPhone, encryptPhone } from "../../Utils/User/user.utils";
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     get: (phone) => decryptPhone(phone),
+    set: (phone) => encryptPhone(phone),
   },
   age: {
     type: Number,

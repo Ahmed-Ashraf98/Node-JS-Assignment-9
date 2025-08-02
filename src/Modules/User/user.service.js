@@ -12,17 +12,15 @@ export const signUp = async (req, res, next) => {
   if (userRecord) {
     return responseHandler(res, "Email already exists", httpStatus.BAD_REQUEST);
   }
-  console.log("userRecord", userRecord);
   // 2- create a new user
 
-  const encryptedPhone = userUtils.encryptPhone(phone);
   const hashedPassword = await userUtils.hashPassword(password);
 
   const data = {
     name,
     email,
     password: hashedPassword,
-    phone: encryptedPhone,
+    phone,
     age,
   };
 
@@ -82,7 +80,6 @@ export const updateUser = async (req, res, next) => {
   if (email) {
     const checkEmail = await UserModal.findOne({ email });
     if (checkEmail && checkEmail._id.toString() !== userId) {
-      console.log("Email already exists");
       return responseHandler(
         res,
         "Email already exists",
@@ -95,9 +92,7 @@ export const updateUser = async (req, res, next) => {
     name ? (userRecord.name = name) : userRecord.name;
     email ? (userRecord.email = email) : userRecord.email;
     age ? (userRecord.age = age) : userRecord.age;
-    phone
-      ? (userRecord.phone = userUtils.encryptPhone(phone))
-      : userRecord.phone;
+    phone ? (userRecord.phone = phone) : userRecord.phone;
 
     await userRecord.save();
 
@@ -120,7 +115,6 @@ export const deleteUser = async (req, res, next) => {
 };
 
 export const getUserDetails = async (req, res, next) => {
-  console.log(req.tokenObj);
   const userId = req.tokenObj.id;
   const userObj = await UserModal.findById(userId);
   if (!userObj) {
