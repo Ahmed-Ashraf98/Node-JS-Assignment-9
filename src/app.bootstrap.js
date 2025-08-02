@@ -1,6 +1,7 @@
 import { connectDB, dbConnectStatus } from "./DB/connection.js";
 import userRouter from "./Modules/User/user.controller.js";
 import noteRouter from "./Modules/Note/note.controller.js";
+import authRouter from "./Modules/Auth/auth.controller.js";
 
 const connectionResult = await connectDB();
 
@@ -15,6 +16,7 @@ export const bootstrap = (express, app) => {
   });
 
   app.use(express.json());
+  app.use("/auth", authRouter);
   app.use("/users", userRouter);
   app.use("/notes", noteRouter);
 

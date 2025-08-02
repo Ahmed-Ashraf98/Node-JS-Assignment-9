@@ -1,5 +1,5 @@
-import mongoose, { get } from "mongoose";
-import { decryptPhone, encryptPhone } from "../../Utils/User/user.utils";
+import mongoose from "mongoose";
+import { decryptPhone, encryptPhone } from "../../Utils/User/user.utils.js";
 
 const userSchema = new mongoose.Schema({
   name: {
