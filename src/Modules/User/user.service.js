@@ -63,9 +63,13 @@ export const login = async (req, res, next) => {
     );
   }
 
-  // 3- generate token
-  const token = userUtils.generateToken({ id: userRecord._id });
-  return responseHandler(res, "Login successful", httpStatus.OK, { token });
+  // 3- generate access token and refresh token
+  const accessToken = userUtils.generateToken({ id: userRecord._id });
+  const refreshToken = userUtils.generateRefreshToken({ id: userRecord._id });
+  return responseHandler(res, "Login successful", httpStatus.OK, {
+    accessToken,
+    refreshToken,
+  });
 };
 
 export const updateUser = async (req, res, next) => {
