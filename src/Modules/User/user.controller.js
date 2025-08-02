@@ -1,0 +1,23 @@
+import express from "express";
+import * as userServices from "./user.service.js";
+import * as authMiddlewares from "../../Middlewares/Auth/auth.middleware.js";
+import * as userMiddlewares from "../../Middlewares/User/user.middleware.js";
+
+const userRouter = express.Router();
+
+userRouter.post("/signup", userMiddlewares.validateEmail, userServices.signUp);
+
+userRouter.post("/login", userServices.login);
+
+userRouter.patch(
+  "/",
+  authMiddlewares.validateToken,
+  userMiddlewares.validateEmail,
+  userServices.updateUser
+);
+
+userRouter.delete("/", authMiddlewares.validateToken, userServices.deleteUser);
+
+userRouter.get("/", authMiddlewares.validateToken, userServices.getUserDetails);
+
+export default userRouter;
