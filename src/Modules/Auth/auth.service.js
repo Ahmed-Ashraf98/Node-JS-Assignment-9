@@ -21,3 +21,5 @@ export const refreshToken = async (req, res, next) => {
     accessToken: newToken,
   });
 };
+
+export const verifyCode = async (req, res, next) => {};
