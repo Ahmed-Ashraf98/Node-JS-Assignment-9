@@ -9,7 +9,7 @@ export const OTP_Template = (
   code,
   codeDuration,
   name,
-  text
+  message
 ) => ` <!DOCTYPE html>
   <html>
     <body style="margin:0;padding:0;font-family:'Segoe UI',sans-serif;background:#f4f6f9;">
