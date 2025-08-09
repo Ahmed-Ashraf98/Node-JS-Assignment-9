@@ -157,10 +157,14 @@ export const forgotPass = async (req, res, next) => {
 
   const currentDate = new Date();
   const after_N_Days = 10;
-  const expireDate = currentDate;
+  const expireDate = new Date(
+    currentDate.getTime() + after_N_Days * 24 * 60 * 60 * 1000
+  ); // Fix: Add days properly
 
   userObj.otp = otp;
-  userObj.otpExpireAt = new Date(after_N_Days);
+  userObj.otpExpireAt = expireDate;
+
+  await userObj.save(); // Fix: Save the user with OTP
 
   authUtils.sendEmailConfirmation(userObj.email, userObj.name, otp, 10);
 
@@ -172,13 +176,35 @@ export const changePass = async (req, res, next) => {
 
   const userObj = req.userRecord;
 
+  // Fix: Check if OTP exists and hasn't expired
+  if (!userObj.otp || !userObj.otpExpireAt) {
+    return responseHandler(res, "No OTP requested", httpStatus.BAD_REQUEST);
+  }
+
+  // Fix: Check if OTP has expired
+  if (new Date() > userObj.otpExpireAt) {
+    return responseHandler(res, "OTP has expired", httpStatus.BAD_REQUEST);
+  }
+
   const decryptedOTP = commonUtils.decryptValue(userObj.otp);
 
   if (decryptedOTP === "") {
-    return responseHandler(res, "Not OTP Requested", httpStatus.BAD_REQUEST);
+    return responseHandler(res, "Invalid OTP", httpStatus.BAD_REQUEST);
   }
 
   if (decryptedOTP !== otp) {
     return responseHandler(res, "Invalid OTP", httpStatus.BAD_REQUEST);
   }
+
+  // Fix: Hash the new password
+  userObj.password = await commonUtils.hashValue(password);
+
+  // Fix: Clear OTP after successful password change
+  userObj.otp = undefined;
+  userObj.otpExpireAt = undefined;
+
+  await userObj.save();
+
+  // Fix: Return the response
+  return responseHandler(res, "Password Changed Successfully", httpStatus.OK);
 };
