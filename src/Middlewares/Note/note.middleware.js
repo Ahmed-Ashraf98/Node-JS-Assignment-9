@@ -1,6 +1,4 @@
 import { NoteModal } from "../../DB/Models/note.model.js";
-import { responseHandler } from "../../Utils/Common/responseHandler.js";
-import httpStatus from "../../Utils/Common/httpStatus.js";
 
 export const validateNote = async (req, res, next) => {
   const noteID = req.params.noteId;

@@ -1,6 +1,4 @@
 import { UserModal } from "../../DB/Models/user.model.js";
-import { responseHandler } from "../../Utils/Common/responseHandler.js";
-import httpStatus from "../../Utils/Common/httpStatus.js";
 
 export const isUserExist = async (req, res, next) => {
   const userID = req.tokenObj.id;
@@ -8,6 +6,16 @@ export const isUserExist = async (req, res, next) => {
   if (!userRecord) {
     // responseHandler(res, "User not found", httpStatus.NOT_FOUND);
     next("User not found");
+  }
+  req.userRecord = userRecord;
+  next();
+};
+
+export const validateUserByEmail = async (req, res, next) => {
+  const { email } = req.body;
+  const userRecord = await UserModal.findOne({ email });
+  if (!userRecord) {
+    next("User email not found");
   }
   req.userRecord = userRecord;
   next();

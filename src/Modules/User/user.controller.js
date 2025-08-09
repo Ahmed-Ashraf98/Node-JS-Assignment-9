@@ -9,6 +9,18 @@ userRouter.post("/signup", userMiddlewares.validateEmail, userServices.signUp);
 
 userRouter.post("/login", userServices.login);
 
+userRouter.post(
+  "/forgot-pass",
+  userMiddlewares.validateUserByEmail,
+  userServices.forgotPass
+);
+
+userRouter.patch(
+  "/change-pass",
+  userMiddlewares.validateUserByEmail,
+  userServices.changePass
+);
+
 userRouter.patch(
   "/",
   authMiddlewares.validateToken,

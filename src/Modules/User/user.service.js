@@ -1,11 +1,9 @@
 import { UserModal } from "../../DB/Models/user.model.js";
-import * as userUtils from "../../Utils/User/user.utils.js";
+import * as commonUtils from "../../Utils/Common/common.utils.js";
+import * as authUtils from "../../Utils/Auth/auth.utils.js";
 import { responseHandler } from "../../Utils/Common/responseHandler.js";
 import httpStatus from "../../Utils/Common/httpStatus.js";
-import {
-  emailEmitter,
-  emailEvents,
-} from "../../Utils/Notification/events/mail.events.js";
+import * as authUtils from "../../Utils/Auth/auth.utils.js";
 
 export const signUp = async (req, res, next) => {
   const { name, email, password, age, phone } = req.body;
@@ -16,9 +14,10 @@ export const signUp = async (req, res, next) => {
   if (userRecord) {
     return responseHandler(res, "Email already exists", httpStatus.BAD_REQUEST);
   }
-  // 2- create a new user
 
-  const hashedPassword = await userUtils.hashPassword(password);
+  // 2- create a new user
+  const hashedPassword = await commonUtils.hashValue(password);
+  const otp = authUtils.generateOTP();
 
   const data = {
     name,
@@ -26,12 +25,16 @@ export const signUp = async (req, res, next) => {
     password: hashedPassword,
     phone,
     age,
+    otp,
   };
 
   try {
     const newUser = new UserModal(data);
     await newUser.save();
-    responseHandler(res, "User created successfully", httpStatus.OK, {
+
+    authUtils.sendEmailConfirmation(email, name, otp, 10);
+
+    return responseHandler(res, "User created successfully", httpStatus.OK, {
       user: newUser,
     });
   } catch (error) {
@@ -54,7 +57,7 @@ export const login = async (req, res, next) => {
   }
 
   // 2- compare password
-  const isPasswordValid = await userUtils.comparePassword(
+  const isPasswordValid = await commonUtils.compareWithHashed(
     password,
     userRecord.password
   );
@@ -67,15 +70,9 @@ export const login = async (req, res, next) => {
     );
   }
 
-  emailEmitter.emit(emailEvents.confirmEmail, {
-    email,
-    name: "Ahmed",
-    otp: "34234",
-    otpDuration: 10,
-  });
   // 3- generate access token and refresh token
-  const accessToken = userUtils.generateToken({ id: userRecord._id });
-  const refreshToken = userUtils.generateRefreshToken({ id: userRecord._id });
+  const accessToken = authUtils.generateToken({ id: userRecord._id });
+  const refreshToken = authUtils.generateRefreshToken({ id: userRecord._id });
   return responseHandler(res, "Login successful", httpStatus.OK, {
     accessToken,
     refreshToken,
@@ -151,4 +148,63 @@ export const getUserDetails = async (req, res, next) => {
       user: userDetails,
     }
   );
+};
+
+export const forgotPass = async (req, res, next) => {
+  const userObj = req.userRecord;
+
+  const otp = authUtils.generateOTP();
+
+  const currentDate = new Date();
+  const after_N_Days = 10;
+  const expireDate = new Date(
+    currentDate.getTime() + after_N_Days * 24 * 60 * 60 * 1000
+  ); // Fix: Add days properly
+
+  userObj.otp = otp;
+  userObj.otpExpireAt = expireDate;
+
+  await userObj.save(); // Fix: Save the user with OTP
+
+  authUtils.sendEmailConfirmation(userObj.email, userObj.name, otp, 10);
+
+  return responseHandler(res, "OTP Sent successfully", httpStatus.OK);
+};
+
+export const changePass = async (req, res, next) => {
+  const { otp, password } = req.body;
+
+  const userObj = req.userRecord;
+
+  // Fix: Check if OTP exists and hasn't expired
+  if (!userObj.otp || !userObj.otpExpireAt) {
+    return responseHandler(res, "No OTP requested", httpStatus.BAD_REQUEST);
+  }
+
+  // Fix: Check if OTP has expired
+  if (new Date() > userObj.otpExpireAt) {
+    return responseHandler(res, "OTP has expired", httpStatus.BAD_REQUEST);
+  }
+
+  const decryptedOTP = commonUtils.decryptValue(userObj.otp);
+
+  if (decryptedOTP === "") {
+    return responseHandler(res, "Invalid OTP", httpStatus.BAD_REQUEST);
+  }
+
+  if (decryptedOTP !== otp) {
+    return responseHandler(res, "Invalid OTP", httpStatus.BAD_REQUEST);
+  }
+
+  // Fix: Hash the new password
+  userObj.password = await commonUtils.hashValue(password);
+
+  // Fix: Clear OTP after successful password change
+  userObj.otp = undefined;
+  userObj.otpExpireAt = undefined;
+
+  await userObj.save();
+
+  // Fix: Return the response
+  return responseHandler(res, "Password Changed Successfully", httpStatus.OK);
 };

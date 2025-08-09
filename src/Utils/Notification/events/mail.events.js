@@ -12,11 +12,11 @@ Object.freeze(emailEvents);
 
 emailEmitter.on(
   "confirmEmail",
-  async ({ email, userName, otp, otpDuration = 10 }) => {
+  async ({ email, name, otp, otpDuration = 10 }) => {
     const template = OTP_Template(
       otp,
       otpDuration,
-      userName,
+      name,
       "Please use the OTP below to verify your email"
     );
     let result = await sendMail("Email Verification", template, [email]);
