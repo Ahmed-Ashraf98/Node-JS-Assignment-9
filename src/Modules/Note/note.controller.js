@@ -6,7 +6,11 @@ import * as noteMiddleware from "../../Middlewares/Note/note.middleware.js";
 
 const noteRouter = express.Router();
 
-noteRouter.use(authMiddlewares.validateToken, userMiddleware.isUserExist);
+noteRouter.use(
+  authMiddlewares.validateBanned,
+  authMiddlewares.validateToken,
+  userMiddleware.isUserExist
+);
 
 // 1- Create a new note
 noteRouter.post("/", noteServices.createNote);

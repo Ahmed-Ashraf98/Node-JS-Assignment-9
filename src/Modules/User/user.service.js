@@ -3,7 +3,7 @@ import * as commonUtils from "../../Utils/Common/common.utils.js";
 import * as authUtils from "../../Utils/Auth/auth.utils.js";
 import { responseHandler } from "../../Utils/Common/responseHandler.js";
 import httpStatus from "../../Utils/Common/httpStatus.js";
-import * as authUtils from "../../Utils/Auth/auth.utils.js";
+import { OTPModel, otpTypes } from "../../DB/Models/otp.model.js";
 
 export const signUp = async (req, res, next) => {
   const { name, email, password, age, phone } = req.body;
@@ -17,22 +17,30 @@ export const signUp = async (req, res, next) => {
 
   // 2- create a new user
   const hashedPassword = await commonUtils.hashValue(password);
-  const otp = authUtils.generateOTP();
+  const otpCode = authUtils.generateOTP();
 
-  const data = {
+  const otpObj = {
+    otp: otpCode,
+    type: otpTypes.email,
+  };
+
+  const userData = {
     name,
     email,
     password: hashedPassword,
     phone,
     age,
-    otp,
   };
 
   try {
-    const newUser = new UserModal(data);
+    const newUser = new UserModal(userData);
     await newUser.save();
 
-    authUtils.sendEmailConfirmation(email, name, otp, 10);
+    otpObj.userId = newUser._id;
+    const newOTP = new OTPModel(otpObj);
+    await newOTP.save();
+
+    authUtils.sendEmailConfirmation(email, name, otpCode, 2);
 
     return responseHandler(res, "User created successfully", httpStatus.OK, {
       user: newUser,
@@ -45,7 +53,6 @@ export const signUp = async (req, res, next) => {
 export const login = async (req, res, next) => {
   const { email, password } = req.body;
 
-  // 1- check if user exists
   const userRecord = await UserModal.findOne({ email });
 
   if (!userRecord) {
@@ -56,7 +63,6 @@ export const login = async (req, res, next) => {
     );
   }
 
-  // 2- compare password
   const isPasswordValid = await commonUtils.compareWithHashed(
     password,
     userRecord.password
@@ -70,9 +76,8 @@ export const login = async (req, res, next) => {
     );
   }
 
-  // 3- generate access token and refresh token
-  const accessToken = authUtils.generateToken({ id: userRecord._id });
-  const refreshToken = authUtils.generateRefreshToken({ id: userRecord._id });
+  const accessToken = authUtils.generateToken(userRecord._id);
+  const refreshToken = authUtils.generateRefreshToken(userRecord._id);
   return responseHandler(res, "Login successful", httpStatus.OK, {
     accessToken,
     refreshToken,
@@ -81,7 +86,7 @@ export const login = async (req, res, next) => {
 
 export const updateUser = async (req, res, next) => {
   const { name, email, age, phone } = req.body;
-  const userId = req.tokenObj.id;
+  const userId = req.tokenObj.userId;
   const userRecord = await UserModal.findById(userId);
 
   if (!userRecord) {
@@ -116,7 +121,7 @@ export const updateUser = async (req, res, next) => {
 };
 
 export const deleteUser = async (req, res, next) => {
-  const userId = req.tokenObj.id;
+  const userId = req.tokenObj.userId;
   const action = await UserModal.findByIdAndDelete(userId);
   if (action == null || action.deletedCount === 0) {
     return responseHandler(res, "User not found", httpStatus.NOT_FOUND);
@@ -126,7 +131,7 @@ export const deleteUser = async (req, res, next) => {
 };
 
 export const getUserDetails = async (req, res, next) => {
-  const userId = req.tokenObj.id;
+  const userId = req.tokenObj.userId;
   const userObj = await UserModal.findById(userId);
   if (!userObj) {
     return responseHandler(res, "User not found", httpStatus.NOT_FOUND);
@@ -153,20 +158,17 @@ export const getUserDetails = async (req, res, next) => {
 export const forgotPass = async (req, res, next) => {
   const userObj = req.userRecord;
 
-  const otp = authUtils.generateOTP();
+  const otpCode = authUtils.generateOTP();
 
-  const currentDate = new Date();
-  const after_N_Days = 10;
-  const expireDate = new Date(
-    currentDate.getTime() + after_N_Days * 24 * 60 * 60 * 1000
-  ); // Fix: Add days properly
+  const otpObj = OTPModel.create({
+    otp: otpCode,
+    userId: userObj._id,
+    type: otpTypes.passwordReset,
+  });
 
-  userObj.otp = otp;
-  userObj.otpExpireAt = expireDate;
+  await otpObj.save();
 
-  await userObj.save(); // Fix: Save the user with OTP
-
-  authUtils.sendEmailConfirmation(userObj.email, userObj.name, otp, 10);
+  authUtils.sendEmailConfirmation(userObj.email, userObj.name, otpCode, 2);
 
   return responseHandler(res, "OTP Sent successfully", httpStatus.OK);
 };

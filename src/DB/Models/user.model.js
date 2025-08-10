@@ -31,13 +31,6 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    otp: {
-      type: String,
-      set: (otp) => encryptValue(otp),
-    },
-    otpExpireAt: {
-      type: Date,
-    },
   },
   {
     timestamps: true,

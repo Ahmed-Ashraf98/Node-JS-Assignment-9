@@ -11,18 +11,21 @@ userRouter.post("/login", userServices.login);
 
 userRouter.post(
   "/forgot-pass",
+  authMiddlewares.validateBanned,
   userMiddlewares.validateUserByEmail,
   userServices.forgotPass
 );
 
 userRouter.patch(
   "/change-pass",
+  authMiddlewares.validateBanned,
   userMiddlewares.validateUserByEmail,
   userServices.changePass
 );
 
 userRouter.patch(
   "/",
+  authMiddlewares.validateBanned,
   authMiddlewares.validateToken,
   userMiddlewares.validateEmail,
   userServices.updateUser
@@ -30,6 +33,11 @@ userRouter.patch(
 
 userRouter.delete("/", authMiddlewares.validateToken, userServices.deleteUser);
 
-userRouter.get("/", authMiddlewares.validateToken, userServices.getUserDetails);
+userRouter.get(
+  "/",
+  authMiddlewares.validateBanned,
+  authMiddlewares.validateToken,
+  userServices.getUserDetails
+);
 
 export default userRouter;
