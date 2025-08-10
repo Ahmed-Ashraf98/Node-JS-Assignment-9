@@ -25,7 +25,7 @@ export const validateBanned = async (req, res, next) => {
   try {
     // Validate if user banned using Token Or Email (based on request)
     const token = req.headers.token;
-    const { email } = req.body;
+    const email = req?.body?.email ? req.body.email : null;
     let userId = "";
 
     if (token) {
@@ -46,7 +46,6 @@ export const validateBanned = async (req, res, next) => {
     }
 
     const banRecord = await BanModel.findOne({ userId });
-
     if (banRecord) {
       return responseHandler(
         res,

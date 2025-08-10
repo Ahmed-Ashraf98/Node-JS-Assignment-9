@@ -4,6 +4,7 @@ import * as authUtils from "../../Utils/Auth/auth.utils.js";
 import { responseHandler } from "../../Utils/Common/responseHandler.js";
 import httpStatus from "../../Utils/Common/httpStatus.js";
 import { OTPModel, otpTypes } from "../../DB/Models/otp.model.js";
+import { BanModel } from "../../DB/Models/ban.model.js";
 
 export const signUp = async (req, res, next) => {
   const { name, email, password, age, phone } = req.body;
@@ -157,16 +158,14 @@ export const getUserDetails = async (req, res, next) => {
 
 export const forgotPass = async (req, res, next) => {
   const userObj = req.userRecord;
-
+  console.log("Helloxxx");
   const otpCode = authUtils.generateOTP();
 
-  const otpObj = OTPModel.create({
+  await OTPModel.create({
     otp: otpCode,
     userId: userObj._id,
     type: otpTypes.passwordReset,
   });
-
-  await otpObj.save();
 
   authUtils.sendEmailConfirmation(userObj.email, userObj.name, otpCode, 2);
 
@@ -178,35 +177,48 @@ export const changePass = async (req, res, next) => {
 
   const userObj = req.userRecord;
 
-  // Fix: Check if OTP exists and hasn't expired
-  if (!userObj.otp || !userObj.otpExpireAt) {
+  // Find the OTP record for this user
+  const otpRecord = await OTPModel.findOne({
+    userId: userObj._id,
+    type: otpTypes.passwordReset,
+  });
+
+  if (!otpRecord) {
     return responseHandler(res, "No OTP requested", httpStatus.BAD_REQUEST);
   }
 
-  // Fix: Check if OTP has expired
-  if (new Date() > userObj.otpExpireAt) {
-    return responseHandler(res, "OTP has expired", httpStatus.BAD_REQUEST);
+  // Check if OTP matches
+  if (otp !== otpRecord.otp) {
+    // Increment failed attempts
+    otpRecord.failedOtpAttempts += 1;
+    await otpRecord.save();
+
+    // Check if user should be banned
+    if (otpRecord.failedOtpAttempts > 5) {
+      await BanModel.create({
+        userId: userObj._id,
+        reason: "Multiple failed password reset attempts",
+      });
+
+      return responseHandler(
+        res,
+        "Account temporarily banned due to multiple failed password reset attempts. Please try again later.",
+        httpStatus.TOO_MANY_REQUESTS
+      );
+    }
+
+    const remainingAttempts = 5 - otpRecord.failedOtpAttempts;
+    return responseHandler(
+      res,
+      `Invalid OTP. ${remainingAttempts} attempts remaining.`,
+      httpStatus.BAD_REQUEST
+    );
   }
 
-  const decryptedOTP = commonUtils.decryptValue(userObj.otp);
-
-  if (decryptedOTP === "") {
-    return responseHandler(res, "Invalid OTP", httpStatus.BAD_REQUEST);
-  }
-
-  if (decryptedOTP !== otp) {
-    return responseHandler(res, "Invalid OTP", httpStatus.BAD_REQUEST);
-  }
-
-  // Fix: Hash the new password
   userObj.password = await commonUtils.hashValue(password);
-
-  // Fix: Clear OTP after successful password change
-  userObj.otp = undefined;
-  userObj.otpExpireAt = undefined;
-
   await userObj.save();
 
-  // Fix: Return the response
+  await OTPModel.deleteOne({ _id: otpRecord._id });
+
   return responseHandler(res, "Password Changed Successfully", httpStatus.OK);
 };

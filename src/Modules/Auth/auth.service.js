@@ -52,6 +52,16 @@ export const verifyCode = async (req, res, next) => {
     );
   }
 
+  const bannedAcc = await BanModel.findOne({ userId: userDoc._id });
+
+  if (bannedAcc) {
+    return responseHandler(
+      res,
+      "Account temporarily banned due to multiple failed OTP attempts. Please try again later.",
+      httpStatus.FORBIDDEN
+    );
+  }
+
   if (otp !== otpDoc.otp) {
     otpDoc.failedOtpAttempts += 1;
     await otpDoc.save();
@@ -61,11 +71,10 @@ export const verifyCode = async (req, res, next) => {
         userId: userDoc._id,
         reason: "Multiple failed OTP attempts",
       });
-
       return responseHandler(
         res,
         "Account temporarily banned due to multiple failed OTP attempts. Please try again later.",
-        httpStatus.TOO_MANY_REQUESTS
+        httpStatus.FORBIDDEN
       );
     }
 
@@ -85,4 +94,47 @@ export const verifyCode = async (req, res, next) => {
   }
 
   return responseHandler(res, "Code verified successfully", httpStatus.OK);
+};
+
+export const resendOTP = async (req, res, next) => {
+  const { email } = req.body;
+
+  const userDoc = await UserModal.findOne({ email });
+
+  if (!userDoc) {
+    return responseHandler(res, "User Not Found", httpStatus.NOT_FOUND);
+  }
+
+  const banRecord = await BanModel.findOne({ userId: userDoc._id });
+  if (banRecord) {
+    return responseHandler(
+      res,
+      "Account is temporarily banned. Please try again later.",
+      httpStatus.FORBIDDEN
+    );
+  }
+
+  const existingOtp = await OTPModel.findOne({ userId: userDoc._id });
+
+  const newOtpCode = authUtils.generateOTP();
+
+  try {
+    if (existingOtp) {
+      await OTPModel.deleteOne({ _id: existingOtp._id });
+    }
+
+    const otpType = userDoc.confirmed ? otpTypes.passwordReset : otpTypes.email;
+
+    await OTPModel.create({
+      userId: userDoc._id,
+      type: otpType,
+      otp: newOtpCode,
+    });
+
+    authUtils.sendEmailConfirmation(userDoc.email, userDoc.name, newOtpCode, 2);
+
+    return responseHandler(res, "OTP resent successfully", httpStatus.OK);
+  } catch (error) {
+    next("Error resending OTP: " + error.message);
+  }
 };

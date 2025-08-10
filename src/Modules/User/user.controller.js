@@ -7,7 +7,7 @@ const userRouter = express.Router();
 
 userRouter.post("/signup", userMiddlewares.validateEmail, userServices.signUp);
 
-userRouter.post("/login", userServices.login);
+userRouter.post("/login", authMiddlewares.validateBanned, userServices.login);
 
 userRouter.post(
   "/forgot-pass",
