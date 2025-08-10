@@ -1,4 +1,5 @@
 import { customAlphabet } from "nanoid";
+import jwt from "jsonwebtoken";
 import {
   emailEmitter,
   emailEvents,
@@ -26,13 +27,15 @@ export const generateOTP = (otpLength = 6) => {
 
 export const generateToken = (userId) => {
   const options = { expiresIn: "1h" };
-  const token = jwt.sign(userId, process.env.Token_Sign, options);
+  const payload = { userId };
+  const token = jwt.sign(payload, process.env.Token_Sign, options);
   return token;
 };
 
 export const generateRefreshToken = (userId) => {
   const options = { expiresIn: "7d" };
-  const token = jwt.sign(userId, process.env.Refresh_Token_Sign, options);
+  const payload = { userId };
+  const token = jwt.sign(payload, process.env.Refresh_Token_Sign, options);
   return token;
 };
 
